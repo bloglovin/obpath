@@ -3,13 +3,15 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"unicode/utf8"
 )
 
 // Path is a compiled path that can be applied to an interface{} to get matches
 type Path struct {
-	path  string
-	steps []pathStep
+	context *Context
+	path    string
+	steps   []pathStep
 }
 
 // SyntaxError describes a path parser error
@@ -39,15 +41,10 @@ type pathStep struct {
 	condition *expression
 }
 
-type expression struct {
-	name      string
-	arguments []interface{}
-}
-
 // MustCompile returns the compiled path, and panics if
 // there are any errors.
-func MustCompile(path string) *Path {
-	compiled, err := Compile(path)
+func MustCompile(path string, context *Context) *Path {
+	compiled, err := Compile(path, context)
 	if err != nil {
 		panic(err)
 	}
@@ -55,12 +52,12 @@ func MustCompile(path string) *Path {
 }
 
 // Compile returns the compiled path.
-func Compile(path string) (*Path, error) {
+func Compile(path string, context *Context) (*Path, error) {
 	c := compiler{path, 0}
 	if path == "" {
 		return nil, c.errorf("empty path")
 	}
-	p, err := c.parsePath()
+	p, err := c.parsePath(context)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +73,7 @@ func (c *compiler) errorf(format string, args ...interface{}) error {
 	return fmt.Errorf("syntax error in path %q at character %d: %s", c.path, c.index, fmt.Sprintf(format, args...))
 }
 
-func (c *compiler) parsePath() (path *Path, err error) {
+func (c *compiler) parsePath(context *Context) (path *Path, err error) {
 	var steps []pathStep
 	var start = c.index
 
@@ -85,6 +82,9 @@ func (c *compiler) parsePath() (path *Path, err error) {
 
 		if c.skip('.') {
 			if c.skip('.') {
+				if !context.AllowDescendants {
+					return nil, c.errorf("unexpected %q expected a name", c.path[c.index-1])
+				}
 				step.target = "descendant"
 			} else {
 				step.target = "child"
@@ -97,7 +97,7 @@ func (c *compiler) parsePath() (path *Path, err error) {
 			step.name = c.path[mark:c.index]
 
 			// Check if we're filtering children by expressions
-			predError := c.parseExpressions(&step)
+			predError := c.parseExpressions(&step, context)
 			if predError != nil {
 				return nil, predError
 			}
@@ -149,7 +149,7 @@ func (c *compiler) parsePath() (path *Path, err error) {
 			}
 
 			// Check if we're filtering items by expressions
-			predError := c.parseExpressions(&step)
+			predError := c.parseExpressions(&step, context)
 			if predError != nil {
 				return nil, predError
 			}
@@ -157,7 +157,11 @@ func (c *compiler) parsePath() (path *Path, err error) {
 			if (start == 0 || start == c.index) && c.index < len(c.path) {
 				return nil, c.errorf("unexpected %q", c.path[c.index])
 			}
-			return &Path{steps: steps, path: c.path[start:c.index]}, nil
+			return &Path{
+				context: context,
+				steps:   steps,
+				path:    c.path[start:c.index],
+			}, nil
 		}
 
 		steps = append(steps, step)
@@ -165,7 +169,7 @@ func (c *compiler) parsePath() (path *Path, err error) {
 	panic("unreachable")
 }
 
-func (c *compiler) parseExpressions(step *pathStep) error {
+func (c *compiler) parseExpressions(step *pathStep, context *Context) error {
 	// The initial ( tells us that we're using filters, it's fine if it's missing
 	// that just means that we don't have any expressions.
 	if !c.skip('(') {
@@ -174,12 +178,28 @@ func (c *compiler) parseExpressions(step *pathStep) error {
 
 	c.skipAll(' ')
 
+	inverse := c.skip('!')
+
 	// Read the name of the expression
 	mark := c.index
 	if !c.skipName() {
 		return c.errorf("unexpected %q, expected expression name", c.path[c.index])
 	}
-	step.condition = &expression{name: c.path[mark:c.index]}
+	name := c.path[mark:c.index]
+	function := context.ConditionFunctions[name]
+	argCount := len(function.Arguments)
+
+	if function == nil {
+		return c.errorf("Unknown expression %q, expected one of: %v",
+			name,
+			strings.Join(context.ConditionNames(), ", "))
+	}
+
+	step.condition = &expression{
+		Condition: function,
+		Inverse:   inverse,
+		Arguments: make([]ExpressionArgument, argCount),
+	}
 
 	// Parenthesis leading in to the argument list
 	if !c.skip('(') {
@@ -187,20 +207,24 @@ func (c *compiler) parseExpressions(step *pathStep) error {
 	}
 
 	// Read arguments
+	argIndex := 0
 	for {
 		c.skipAll(' ')
 		mark = c.index
 
+		argument := ExpressionArgument{}
+
 		// A path reference
 		if c.skip('@') {
 			refCompiler := compiler{path: c.path, index: c.index}
-			refPath, refError := refCompiler.parsePath()
+			refPath, refError := refCompiler.parsePath(context)
 
 			if refError != nil {
 				return refError
 			}
 
-			step.condition.arguments = append(step.condition.arguments, refPath)
+			argument.Type = PathArg
+			argument.Value = refPath
 			c.index = refCompiler.index
 		} else if c.peek('"') || c.peek('\'') { // A string literal
 
@@ -210,27 +234,45 @@ func (c *compiler) parseExpressions(step *pathStep) error {
 				return c.errorf("failed to parse string literal: %v", litError.Error())
 			}
 
-			step.condition.arguments = append(step.condition.arguments, stringArg)
+			argument.Type = StringArg
+			argument.Value = stringArg
 		} else if isNumber, isFloat := c.skipNumber(); isNumber { // An integer or float
-			if isFloat {
-				value, convErr := strconv.ParseFloat(c.path[mark:c.index], 64)
-				if convErr != nil {
-					return c.errorf("failed to parse float literal")
-				}
-				step.condition.arguments = append(step.condition.arguments, value)
-			} else {
+			if !isFloat && function.Arguments[argIndex]&IntegerArg > 0 {
 				value, convErr := strconv.ParseInt(c.path[mark:c.index], 10, 64)
 				if convErr != nil {
 					return c.errorf("failed to parse integer literal")
 				}
-				step.condition.arguments = append(step.condition.arguments, value)
+				argument.Type = IntegerArg
+				argument.Value = value
+			} else {
+				value, convErr := strconv.ParseFloat(c.path[mark:c.index], 64)
+				if convErr != nil {
+					return c.errorf("failed to parse float literal")
+				}
+				argument.Type = FloatArg
+				argument.Value = value
 			}
 		}
+
+		if argument.Type != 0 {
+			if argIndex >= argCount {
+				return c.errorf("unexpected argument %v, only expected %v arguments", argIndex+1, argCount)
+			}
+
+			if argument.Type&function.Arguments[argIndex] == 0 {
+				return c.errorf("unexpected argument type %v, expected one of: %v",
+					TypeNames(argument.Type)[0],
+					strings.Join(TypeNames(function.Arguments[argIndex]), ", "))
+			}
+		}
+
+		step.condition.Arguments[argIndex] = argument
 
 		// If the next character isn't a comma we don't have any more arguments
 		if !c.skip(',') {
 			break
 		}
+		argIndex++
 	}
 
 	c.skipAll(' ')

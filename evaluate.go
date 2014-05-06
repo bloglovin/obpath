@@ -1,61 +1,52 @@
 package main
 
 import (
-	"log"
 	"reflect"
 )
 
-// ConditionFunction is a function that can be used to filter matches.
-type ConditionFunction struct {
-	test func(name string, arguments []interface{}) bool
-	args int
-}
-
-// Context is context in which paths are evaluated against structures
-type Context struct {
-	conditionFuncs map[string]*ConditionFunction
-}
-
-func testEquals(name string, arguments []interface{}) bool {
-	return true
-}
-
-// NewContext creates a new evaluation context
-func NewContext() *Context {
-	context := Context{}
-
-	// Set up the default test functions
-	context.conditionFuncs = map[string]*ConditionFunction{
-		"eq": &ConditionFunction{
-			test: testEquals,
-			args: 2,
-		},
-	}
-
-	return &context
-}
-
 // Evaluate finds everything matching an expression
-func (context *Context) Evaluate(path *Path, object interface{}, result chan<- interface{}) {
-	log.Print("Up & running")
-	context.evaluateStep(path, 0, object, result)
+func (path *Path) Evaluate(object interface{}, result chan<- interface{}) {
+	path.evaluateStep(0, object, result)
 	close(result)
 }
 
-func (context *Context) checkAndEvaluateNextStep(path *Path, index int, object interface{}, result chan<- interface{}) {
+func (path *Path) checkAndEvaluateNextStep(index int, object interface{}, result chan<- interface{}) {
 	step := path.steps[index]
 
 	if step.condition != nil {
-		testFunc := context.conditionFuncs[step.condition.name]
-		if testFunc != nil && len(step.condition.arguments) == testFunc.args {
+		args := make([]ExpressionArgument, len(step.condition.Arguments))
+		for idx, arg := range step.condition.Arguments {
+			if arg.Type&PathArg == PathArg {
+				path := arg.Value.(*Path)
+				result := make(chan interface{})
+				go path.Evaluate(object, result)
 
+				values := []interface{}{}
+				for item := range result {
+					values = append(values, item)
+				}
+				args[idx] = ExpressionArgument{
+					Type:  PathArg,
+					Value: values,
+				}
+			} else {
+				args[idx] = arg
+			}
+		}
+
+		match := step.condition.Condition.TestFunction(args)
+		if step.condition.Inverse {
+			match = !match
+		}
+		if match {
+			path.evaluateStep(index+1, object, result)
 		}
 	} else {
-		context.evaluateStep(path, index+1, object, result)
+		path.evaluateStep(index+1, object, result)
 	}
 }
 
-func (context *Context) evaluateStep(path *Path, index int, object interface{}, result chan<- interface{}) {
+func (path *Path) evaluateStep(index int, object interface{}, result chan<- interface{}) {
 	if index >= len(path.steps) {
 		result <- object
 		return
@@ -74,17 +65,17 @@ func (context *Context) evaluateStep(path *Path, index int, object interface{}, 
 			if kind == reflect.Map {
 				for _, key := range v.MapKeys() {
 					child := v.MapIndex(key)
-					context.checkAndEvaluateNextStep(path, index, child.Interface(), result)
+					path.checkAndEvaluateNextStep(index, child.Interface(), result)
 				}
 			} else if kind == reflect.Struct {
 				length := v.NumField()
 				for i := 0; i < length; i++ {
-					context.checkAndEvaluateNextStep(path, index, v.Field(i).Interface(), result)
+					path.checkAndEvaluateNextStep(index, v.Field(i).Interface(), result)
 				}
 			} else if kind == reflect.Array || kind == reflect.Slice {
 				length := v.Len()
 				for i := 0; i < length; i++ {
-					context.checkAndEvaluateNextStep(path, index, v.Index(i).Interface(), result)
+					path.checkAndEvaluateNextStep(index, v.Index(i).Interface(), result)
 				}
 			}
 		} else {
@@ -93,12 +84,12 @@ func (context *Context) evaluateStep(path *Path, index int, object interface{}, 
 				child := v.MapIndex(reflect.ValueOf(step.name))
 
 				if child != zero {
-					context.checkAndEvaluateNextStep(path, index, child.Interface(), result)
+					path.checkAndEvaluateNextStep(index, child.Interface(), result)
 				}
 			} else if kind == reflect.Struct {
 				child := v.FieldByName(step.name)
 				if child != zero {
-					context.checkAndEvaluateNextStep(path, index, child.Interface(), result)
+					path.checkAndEvaluateNextStep(index, child.Interface(), result)
 				}
 			}
 		}
@@ -108,17 +99,17 @@ func (context *Context) evaluateStep(path *Path, index int, object interface{}, 
 		if step.target == "descendant" {
 			if kind == reflect.Map {
 				for _, key := range v.MapKeys() {
-					context.evaluateStep(path, index, v.MapIndex(key).Interface(), result)
+					path.evaluateStep(index, v.MapIndex(key).Interface(), result)
 				}
 			} else if kind == reflect.Struct {
 				length := v.NumField()
 				for i := 0; i < length; i++ {
-					context.evaluateStep(path, index, v.Field(i).Interface(), result)
+					path.evaluateStep(index, v.Field(i).Interface(), result)
 				}
 			} else if kind == reflect.Array || kind == reflect.Slice {
 				length := v.Len()
 				for i := 0; i < length; i++ {
-					context.evaluateStep(path, index, v.Index(i).Interface(), result)
+					path.evaluateStep(index, v.Index(i).Interface(), result)
 				}
 			}
 		}
@@ -134,7 +125,7 @@ func (context *Context) evaluateStep(path *Path, index int, object interface{}, 
 				if step.condition != nil {
 
 				}
-				context.checkAndEvaluateNextStep(path, index, v.Index(i).Interface(), result)
+				path.checkAndEvaluateNextStep(index, v.Index(i).Interface(), result)
 			}
 		}
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"reflect"
 )
 
 type book struct {
@@ -35,12 +36,6 @@ func main() {
 					Title:    "Sword of Honour",
 					Price:    12.99,
 				},
-				stringMap{
-					"Category": "fiction",
-					"Author":   "Evelyn Waugh",
-					"Title":    "Sword of Honour",
-					"Price":    12.99,
-				},
 				book{
 					Category: "fiction",
 					Author:   "Louis L'Amour",
@@ -54,6 +49,9 @@ func main() {
 					"Title":    "Moby Dick",
 					"ISBN":     "0-553-21311-3",
 					"Price":    8.99,
+					"Metadata": stringMap{
+						"Info": "foobar",
+					},
 				},
 				stringMap{
 					"Category": "fiction",
@@ -87,20 +85,43 @@ func main() {
 		".store.counts[:1].Price",
 		"[*]",
 		"..books[*](has(@.ISBN))",
-		"..books[*](eq(@.Price, 8.99))",
-		"..books[0:4](eq(@.Author, \"Louis L'Amour\"))",
-		"..books[*](between(@.Price, 9, 10)).Title",
-		"..books[](gt(@.Price, 9))",
+		".store.books[*](!empty(@.ISBN))",
+		".store.books[*](eq(@.Price, 8.99))",
+		".store.books[0:4](eq(@.Author, \"Louis L'Amour\"))",
+		"..books.*(between(@.Price, 8, 10)).Title",
+		"..books[*](gt(@.Price, 9))",
+		"..books[*](has(@.Metadata))",
+		"..books[*](nonfiction(@.Category))",
+		"..books[*](contains(@.Title, 'R')).Title",
+		"..books[*](cicontains(@.Title, 'R')).Title",
+		".store.*[*](gt(@.Price, 18))",
 	}
 
-	for _, path := range tests {
-		log.Printf("Path: %v", path)
-		compiled := MustCompile(path)
-		log.Printf("Compiled: %v", compiled)
+	context := NewContext()
+	context.AllowDescendants = true
+
+	// Add a pretty stupid custom condition
+	context.ConditionFunctions["nonfiction"] = &ConditionFunction{
+		TestFunction: func(arguments []ExpressionArgument) bool {
+			matches := arguments[0].Value.([]interface{})
+			for _, match := range matches {
+				if reflect.ValueOf(match).String() != "fiction" {
+					return true
+				}
+			}
+			return false
+		},
+		Arguments: []int{
+			PathArg,
+		},
+	}
+
+	for _, pathExpression := range tests {
+		log.Printf("Path: %v", pathExpression)
+		path := MustCompile(pathExpression, context)
 
 		result := make(chan interface{})
-		context := NewContext()
-		go context.Evaluate(compiled, testData, result)
+		go path.Evaluate(testData, result)
 
 		for item := range result {
 			log.Printf("Got match %v", item)
