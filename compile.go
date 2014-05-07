@@ -83,7 +83,7 @@ func (c *compiler) parsePath(context *Context) (path *Path, err error) {
 		if c.skip('.') {
 			if c.skip('.') {
 				if !context.AllowDescendants {
-					return nil, c.errorf("unexpected %q expected a name", c.path[c.index-1])
+					return nil, c.errorf("unexpected %q expected a name", c.offsetChar(-1))
 				}
 				step.target = "descendant"
 			} else {
@@ -145,7 +145,7 @@ func (c *compiler) parsePath(context *Context) (path *Path, err error) {
 			}
 
 			if !c.skip(']') {
-				return nil, c.errorf("unexpected %q, expected ']'", c.path[c.index])
+				return nil, c.expectedCharError(']')
 			}
 
 			// Check if we're filtering items by expressions
@@ -155,7 +155,7 @@ func (c *compiler) parsePath(context *Context) (path *Path, err error) {
 			}
 		} else {
 			if (start == 0 || start == c.index) && c.index < len(c.path) {
-				return nil, c.errorf("unexpected %q", c.path[c.index])
+				return nil, c.unexpectedCharError()
 			}
 			return &Path{
 				context: context,
@@ -183,17 +183,18 @@ func (c *compiler) parseExpressions(step *pathStep, context *Context) error {
 	// Read the name of the expression
 	mark := c.index
 	if !c.skipName() {
-		return c.errorf("unexpected %q, expected expression name", c.path[c.index])
+		return c.errorf("unexpected %v, expected expression name", c.currentChar())
 	}
 	name := c.path[mark:c.index]
 	function := context.ConditionFunctions[name]
-	argCount := len(function.Arguments)
 
 	if function == nil {
 		return c.errorf("Unknown expression %q, expected one of: %v",
 			name,
 			strings.Join(context.ConditionNames(), ", "))
 	}
+
+	argCount := len(function.Arguments)
 
 	step.condition = &expression{
 		Condition: function,
@@ -203,7 +204,7 @@ func (c *compiler) parseExpressions(step *pathStep, context *Context) error {
 
 	// Parenthesis leading in to the argument list
 	if !c.skip('(') {
-		return c.errorf("unexpected %q, expected '('", c.path[c.index])
+		return c.expectedCharError('(')
 	}
 
 	// Read arguments
@@ -278,16 +279,38 @@ func (c *compiler) parseExpressions(step *pathStep, context *Context) error {
 	c.skipAll(' ')
 	// Parenthesis ending the argument list
 	if !c.skip(')') {
-		return c.errorf("unexpected %q, expected ')'", c.path[c.index])
+		return c.expectedCharError(')')
 	}
 
 	c.skipAll(' ')
 	// Parenthesis ending the expression
 	if !c.skip(')') {
-		return c.errorf("unexpected %q, expected ')'", c.path[c.index])
+		return c.expectedCharError(')')
 	}
 
 	return nil
+}
+
+func (c *compiler) unexpectedCharError() error {
+	return c.errorf("unexpected %v", c.currentChar())
+}
+
+func (c *compiler) expectedCharError(expected byte) error {
+	return c.errorf("unexpected %v, expected %q", c.currentChar(), expected)
+}
+
+func (c *compiler) currentChar() string {
+	if c.index < len(c.path) {
+		return fmt.Sprintf("%q", c.path[c.index])
+	}
+	return "EOF"
+}
+
+func (c *compiler) offsetChar(offset int) string {
+	if c.index+offset < len(c.path) && c.index+offset >= 0 {
+		return fmt.Sprintf("%q", c.path[c.index+offset])
+	}
+	return "EOF"
 }
 
 func (c *compiler) parseStringLiteral() (string, error) {

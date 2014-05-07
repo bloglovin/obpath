@@ -22,7 +22,7 @@ func main() {
 
 	compiled, error := obpath.Compile(*path, context)
 	if error != nil {
-		log.Printf("Could not compile path: %v", error)
+		log.Fatalf("Could not compile path: %v", error)
 	}
 
 	index := 0
@@ -37,8 +37,7 @@ func main() {
 			if err == io.EOF {
 				break
 			} else {
-				log.Println(err)
-				return
+				log.Fatalf("Read JSON from stdin: %v", error)
 			}
 		}
 		go compiled.Evaluate(input, result)
@@ -66,7 +65,7 @@ func main() {
 	if !(*stream) {
 		slice := buffer[:index]
 		if err := enc.Encode(&slice); err != nil {
-			log.Println(err)
+			log.Fatalf("Could not write JSON to stdout: %v", error)
 		}
 	}
 }
