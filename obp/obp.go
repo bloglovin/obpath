@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	path := flag.String("path", "*", "Path expression")
+	path := flag.String("path", ".*", "Path expression")
 	stream := flag.Bool("stream", true, "Emit the results as a newline delimited JSON stream")
 	flag.Parse()
 
