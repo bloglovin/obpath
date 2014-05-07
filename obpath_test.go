@@ -1,8 +1,10 @@
-package main
+package obpath_test
 
 import (
+	"github.com/bloglovin/obpath"
 	"log"
 	"reflect"
+	"testing"
 )
 
 type book struct {
@@ -20,7 +22,7 @@ type bike struct {
 
 type stringMap map[string]interface{}
 
-func main() {
+func Test_SampleRun(t *testing.T) {
 	testData := map[string]stringMap{
 		"store": stringMap{
 			"books": []interface{}{
@@ -97,12 +99,12 @@ func main() {
 		".store.*[*](gt(@.Price, 18))",
 	}
 
-	context := NewContext()
+	context := obpath.NewContext()
 	context.AllowDescendants = true
 
 	// Add a pretty stupid custom condition
-	context.ConditionFunctions["nonfiction"] = &ConditionFunction{
-		TestFunction: func(arguments []ExpressionArgument) bool {
+	context.ConditionFunctions["nonfiction"] = &obpath.ConditionFunction{
+		TestFunction: func(arguments []obpath.ExpressionArgument) bool {
 			matches := arguments[0].Value.([]interface{})
 			for _, match := range matches {
 				if reflect.ValueOf(match).String() != "fiction" {
@@ -112,13 +114,13 @@ func main() {
 			return false
 		},
 		Arguments: []int{
-			PathArg,
+			obpath.PathArg,
 		},
 	}
 
 	for _, pathExpression := range tests {
 		log.Printf("Path: %v", pathExpression)
-		path := MustCompile(pathExpression, context)
+		path := obpath.MustCompile(pathExpression, context)
 
 		result := make(chan interface{})
 		go path.Evaluate(testData, result)

@@ -1,0 +1,49 @@
+{
+  "store": {
+    "books": [
+      {
+        "Category": "reference",
+        "Author":   "Nigel Rees",
+        "Title":    "Sayings of the Century",
+        "Price":    8.95
+      },
+      {
+        "Category": "fiction",
+        "Author":   "Evelyn Waugh",
+        "Title":    "Sword of Honour",
+        "Price":    12.99
+      },
+      {
+        "Category": "fiction",
+        "Author":   "Louis L'Amour",
+        "Title":    "Westward the Tide",
+        "ISBN":     "0-553-24766-2",
+        "Price":    5.52
+      },
+      {
+        "Category": "fiction",
+        "Author":   "Herman Melville",
+        "Title":    "Moby Dick",
+        "ISBN":     "0-553-21311-3",
+        "Price":    8.99,
+        "Metadata": {
+          "Info": "foobar"
+        }
+      },
+      {
+        "Category": "fiction",
+        "Author":   "J. R. R. Tolkien",
+        "Title":    "The Lord of the Rings",
+        "ISBN":     "0-395-19395-8",
+        "Price": 22.99
+      }
+    ],
+    "bicycles": [
+      {
+        "Color": "red",
+        "Price": 19.95
+      }
+    ],
+    "counts": ["one", "two", "three", "four"]
+  }
+}
