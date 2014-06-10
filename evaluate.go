@@ -121,10 +121,7 @@ func (path *Path) evaluateStep(index int, object interface{}, result chan<- inte
 			startSlice := sliceBound(step.start, length)
 			endSlice := sliceBound(step.end, length)
 
-			for i := startSlice; i <= endSlice; i++ {
-				if step.condition != nil {
-
-				}
+			for i := startSlice; i <= endSlice && i < length; i++ {
 				path.checkAndEvaluateNextStep(index, v.Index(i).Interface(), result)
 			}
 		}

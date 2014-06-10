@@ -138,10 +138,7 @@ func testEmpty(arguments []ExpressionArgument) bool {
 func testGreater(arguments []ExpressionArgument) bool {
 	matches := arguments[0].Value.([]interface{})
 
-	error, f1 := FloatCast(arguments[1].Value)
-	if error != nil {
-		return false
-	}
+	_, f1 := FloatCast(arguments[1].Value)
 
 	for _, match := range matches {
 		error, f0 := FloatCast(match)
@@ -159,10 +156,7 @@ func testGreater(arguments []ExpressionArgument) bool {
 func testLess(arguments []ExpressionArgument) bool {
 	matches := arguments[0].Value.([]interface{})
 
-	error, f1 := FloatCast(arguments[1].Value)
-	if error != nil {
-		return false
-	}
+	_, f1 := FloatCast(arguments[1].Value)
 
 	for _, match := range matches {
 		error, f0 := FloatCast(match)
@@ -180,10 +174,7 @@ func testLess(arguments []ExpressionArgument) bool {
 func testGreaterOrEqual(arguments []ExpressionArgument) bool {
 	matches := arguments[0].Value.([]interface{})
 
-	error, f1 := FloatCast(arguments[1].Value)
-	if error != nil {
-		return false
-	}
+	_, f1 := FloatCast(arguments[1].Value)
 
 	for _, match := range matches {
 		error, f0 := FloatCast(match)
@@ -201,10 +192,7 @@ func testGreaterOrEqual(arguments []ExpressionArgument) bool {
 func testLessOrEqual(arguments []ExpressionArgument) bool {
 	matches := arguments[0].Value.([]interface{})
 
-	error, f1 := FloatCast(arguments[1].Value)
-	if error != nil {
-		return false
-	}
+	_, f1 := FloatCast(arguments[1].Value)
 
 	for _, match := range matches {
 		error, f0 := FloatCast(match)
@@ -222,15 +210,8 @@ func testLessOrEqual(arguments []ExpressionArgument) bool {
 func testBetween(arguments []ExpressionArgument) bool {
 	matches := arguments[0].Value.([]interface{})
 
-	error, f1 := FloatCast(arguments[1].Value)
-	if error != nil {
-		return false
-	}
-
-	error, f2 := FloatCast(arguments[2].Value)
-	if error != nil {
-		return false
-	}
+	_, f1 := FloatCast(arguments[1].Value)
+	_, f2 := FloatCast(arguments[2].Value)
 
 	for _, match := range matches {
 		error, f0 := FloatCast(match)

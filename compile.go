@@ -110,21 +110,14 @@ func (c *compiler) parsePath(context *Context) (path *Path, err error) {
 				step.start = 0
 				step.end = -1
 			} else if c.skipInteger() {
-				index, convErr := strconv.ParseInt(c.path[mark:c.index], 10, 64)
-
-				if convErr != nil {
-					return nil, c.errorf("failed to parse range offset")
-				}
+				index, _ := strconv.ParseInt(c.path[mark:c.index], 10, 64)
 
 				step.start = int(index)
 
 				if c.skip(':') {
 					mark = c.index
 					if c.skipInteger() {
-						index, convErr = strconv.ParseInt(c.path[mark:c.index], 10, 64)
-						if convErr != nil {
-							return nil, c.errorf("failed to parse range end")
-						}
+						index, _ = strconv.ParseInt(c.path[mark:c.index], 10, 64)
 						step.end = int(index)
 					} else {
 						step.end = -1
@@ -136,10 +129,7 @@ func (c *compiler) parsePath(context *Context) (path *Path, err error) {
 				step.start = 0
 				mark = c.index
 				if c.skipInteger() {
-					index, convErr := strconv.ParseInt(c.path[mark:c.index], 10, 64)
-					if convErr != nil {
-						return nil, c.errorf("failed to parse range end")
-					}
+					index, _ := strconv.ParseInt(c.path[mark:c.index], 10, 64)
 					step.end = int(index)
 				}
 			}
@@ -166,7 +156,6 @@ func (c *compiler) parsePath(context *Context) (path *Path, err error) {
 
 		steps = append(steps, step)
 	}
-	panic("unreachable")
 }
 
 func (c *compiler) parseExpressions(step *pathStep, context *Context) error {
@@ -213,6 +202,10 @@ func (c *compiler) parseExpressions(step *pathStep, context *Context) error {
 		c.skipAll(' ')
 		mark = c.index
 
+		if argIndex >= argCount {
+			return c.errorf("unexpected argument %v, only expected %v arguments", argIndex+1, argCount)
+		}
+
 		argument := ExpressionArgument{}
 
 		// A path reference
@@ -239,27 +232,17 @@ func (c *compiler) parseExpressions(step *pathStep, context *Context) error {
 			argument.Value = stringArg
 		} else if isNumber, isFloat := c.skipNumber(); isNumber { // An integer or float
 			if !isFloat && function.Arguments[argIndex]&IntegerArg > 0 {
-				value, convErr := strconv.ParseInt(c.path[mark:c.index], 10, 64)
-				if convErr != nil {
-					return c.errorf("failed to parse integer literal")
-				}
+				value, _ := strconv.ParseInt(c.path[mark:c.index], 10, 64)
 				argument.Type = IntegerArg
 				argument.Value = value
 			} else {
-				value, convErr := strconv.ParseFloat(c.path[mark:c.index], 64)
-				if convErr != nil {
-					return c.errorf("failed to parse float literal")
-				}
+				value, _ := strconv.ParseFloat(c.path[mark:c.index], 64)
 				argument.Type = FloatArg
 				argument.Value = value
 			}
 		}
 
 		if argument.Type != 0 {
-			if argIndex >= argCount {
-				return c.errorf("unexpected argument %v, only expected %v arguments", argIndex+1, argCount)
-			}
-
 			if argument.Type&function.Arguments[argIndex] == 0 {
 				return c.errorf("unexpected argument type %v, expected one of: %v",
 					TypeNames(argument.Type)[0],
@@ -274,6 +257,10 @@ func (c *compiler) parseExpressions(step *pathStep, context *Context) error {
 			break
 		}
 		argIndex++
+	}
+
+	if argIndex+1 != argCount {
+		return c.errorf("expected %v arguments, only got %v", argCount, argIndex+1)
 	}
 
 	c.skipAll(' ')
@@ -320,7 +307,7 @@ func (c *compiler) parseStringLiteral() (string, error) {
 		if c.skip(ch) {
 			mark := c.index
 			if !c.skipUntil(ch) {
-				return "", fmt.Errorf(`missing closing "%v"`, ch)
+				return "", fmt.Errorf(`missing closing %q`, ch)
 			}
 			return c.path[mark : c.index-1], nil
 		}
@@ -359,14 +346,6 @@ func (c *compiler) skipAll(b byte) bool {
 		c.index++
 	}
 	return c.index > start
-}
-
-func (c *compiler) skipString(s string) bool {
-	if c.index+len(s) <= len(c.path) && c.path[c.index:c.index+len(s)] == s {
-		c.index += len(s)
-		return true
-	}
-	return false
 }
 
 func (c *compiler) skipInteger() bool {
