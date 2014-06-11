@@ -1,0 +1,15 @@
+[
+  ".leftOpen[0",
+  ".missingName.",
+  ".badPredicateName(#(@))",
+  ".the(predicateNameIsUnknown(@))",
+  ".missingPredicateArgs(has)",
+  "(badPathStart)",
+  ".badStringLiteral(eq('))",
+  ".tooManyArgs(gt(@.Price,0,1,2))",
+  ".tooManyArgs(gt(@.Price))",
+  ".badArgType(gt('foo',@.Name))",
+  ".badArgType2(gt(@.Name, @.Role))",
+  ".predicateCutOff(gt(@.Price,2",
+  ".epressionCutOff(gt(@.Price,2)"
+]

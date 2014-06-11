@@ -1,0 +1,33 @@
+{"Name":"object-array-access","Path":"[*]","Results":[]}
+{"Name":"child","Path":".store","Results":[{"bicycles":[{"Color":"red","Price":19.95}],"books":[{"Author":"Nigel Rees","Category":"reference","Price":8.95,"Title":"Sayings of the Century"},{"Author":"Evelyn Waugh","Category":"fiction","Price":12.99,"Title":"Sword of Honour"},{"Author":"Louis L'Amour","Category":"fiction","ISBN":"0-553-24766-2","Price":5.52,"Title":"Westward the Tide"},{"Author":"Herman Melville","Category":"fiction","ISBN":"0-553-21311-3","Metadata":{"Info":"foobar"},"Price":8.99,"Title":"Moby Dick"},{"Author":"J. R. R. Tolkien","Category":"fiction","ISBN":"0-395-19395-8","Price":22.99,"Title":"The Lord of the Rings"}],"counts":["one","two","three","four"],"wombats":[]}]}
+{"Name":"2-level-child","Path":".store.books","Results":[[{"Author":"Nigel Rees","Category":"reference","Price":8.95,"Title":"Sayings of the Century"},{"Author":"Evelyn Waugh","Category":"fiction","Price":12.99,"Title":"Sword of Honour"},{"Author":"Louis L'Amour","Category":"fiction","ISBN":"0-553-24766-2","Price":5.52,"Title":"Westward the Tide"},{"Author":"Herman Melville","Category":"fiction","ISBN":"0-553-21311-3","Metadata":{"Info":"foobar"},"Price":8.99,"Title":"Moby Dick"},{"Author":"J. R. R. Tolkien","Category":"fiction","ISBN":"0-395-19395-8","Price":22.99,"Title":"The Lord of the Rings"}]]}
+{"Name":"item-at-index","Path":".store.counts[3]","Results":["four"]}
+{"Name":"slice-oob","Path":".store.counts[3:10]","Results":["four"]}
+{"Name":"slice-to-child","Path":".store.counts[:1].Price","Results":[]}
+{"Name":"slice-zero-length","Path":".store.wombats[0:10]","Results":[]}
+{"Name":"all-attributes","Path":"..bicycles[0].*","Results":["red",19.95]}
+{"Name":"slice-range","Path":".store.counts[1:2]","Results":["two","three"]}
+{"Name":"gt-type-mismatch","Path":"..books[*](gt(@.Title, 10))","Results":[]}
+{"Name":"gte-type-mismatch","Path":"..books[*](gte(@.Title, 10))","Results":[]}
+{"Name":"lt-type-mismatch","Path":"..books[*](lt(@.Title, 10))","Results":[]}
+{"Name":"lte-type-mismatch","Path":"..books[*](lte(@.Title, 10))","Results":[]}
+{"Name":"between-type-mismatch","Path":"..books[*](between(@.Title, 10, 20))","Results":[]}
+{"Name":"lt","Path":"..books[*](lt(@.Price, 6)).Title","Results":["Westward the Tide"]}
+{"Name":"lte","Path":"..books[*](lte(@.Price, 6)).Title","Results":["Westward the Tide"]}
+{"Name":"slice-from-end","Path":".store.counts[-2:]","Results":["three","four"]}
+{"Name":"all-array-items","Path":".store.counts[*]","Results":["one","two","three","four"]}
+{"Name":"all-attributes","Path":"..Author","Results":["Nigel Rees","Evelyn Waugh","Louis L'Amour","Herman Melville","J. R. R. Tolkien"]}
+{"Name":"has","Path":"..books[*](has(@.ISBN))","Results":[{"Author":"Louis L'Amour","Category":"fiction","ISBN":"0-553-24766-2","Price":5.52,"Title":"Westward the Tide"},{"Author":"Herman Melville","Category":"fiction","ISBN":"0-553-21311-3","Metadata":{"Info":"foobar"},"Price":8.99,"Title":"Moby Dick"},{"Author":"J. R. R. Tolkien","Category":"fiction","ISBN":"0-395-19395-8","Price":22.99,"Title":"The Lord of the Rings"}]}
+{"Name":"empty","Path":".store.books[*](!empty(@.ISBN))","Results":[{"Author":"Louis L'Amour","Category":"fiction","ISBN":"0-553-24766-2","Price":5.52,"Title":"Westward the Tide"},{"Author":"Herman Melville","Category":"fiction","ISBN":"0-553-21311-3","Metadata":{"Info":"foobar"},"Price":8.99,"Title":"Moby Dick"},{"Author":"J. R. R. Tolkien","Category":"fiction","ISBN":"0-395-19395-8","Price":22.99,"Title":"The Lord of the Rings"}]}
+{"Name":"eq-float","Path":".store.books[*](eq(@.Price, 8.99))","Results":[{"Author":"Herman Melville","Category":"fiction","ISBN":"0-553-21311-3","Metadata":{"Info":"foobar"},"Price":8.99,"Title":"Moby Dick"}]}
+{"Name":"eq-string","Path":".store.books[0:4](eq(@.Author, \"Louis L'Amour\"))","Results":[{"Author":"Louis L'Amour","Category":"fiction","ISBN":"0-553-24766-2","Price":5.52,"Title":"Westward the Tide"}]}
+{"Name":"has-metadata","Path":"..books[*](has(@.Metadata))","Results":[{"Author":"Herman Melville","Category":"fiction","ISBN":"0-553-21311-3","Metadata":{"Info":"foobar"},"Price":8.99,"Title":"Moby Dick"}]}
+{"Name":"contains","Path":"..books[*](contains(@.Title, 'R')).Title","Results":["The Lord of the Rings"]}
+{"Name":"item-predicate","Path":"..books[*](gt(@.Price, 9))","Results":[{"Author":"Evelyn Waugh","Category":"fiction","Price":12.99,"Title":"Sword of Honour"},{"Author":"J. R. R. Tolkien","Category":"fiction","ISBN":"0-395-19395-8","Price":22.99,"Title":"The Lord of the Rings"}]}
+{"Name":"slice-to","Path":".store.counts[:1]","Results":["one","two"]}
+{"Name":"item-type-lists","Path":".store.*","Results":[[{"Author":"Nigel Rees","Category":"reference","Price":8.95,"Title":"Sayings of the Century"},{"Author":"Evelyn Waugh","Category":"fiction","Price":12.99,"Title":"Sword of Honour"},{"Author":"Louis L'Amour","Category":"fiction","ISBN":"0-553-24766-2","Price":5.52,"Title":"Westward the Tide"},{"Author":"Herman Melville","Category":"fiction","ISBN":"0-553-21311-3","Metadata":{"Info":"foobar"},"Price":8.99,"Title":"Moby Dick"},{"Author":"J. R. R. Tolkien","Category":"fiction","ISBN":"0-395-19395-8","Price":22.99,"Title":"The Lord of the Rings"}],[{"Color":"red","Price":19.95}],["one","two","three","four"],[]]}
+{"Name":"between","Path":"..books[*](between(@.Price, 12, 13)).Title","Results":["Sword of Honour"]}
+{"Name":"attribute-predicate","Path":"..books.*(between(@.Price, 8, 10)).Title","Results":["Sayings of the Century","Moby Dick"]}
+{"Name":"ci-contains","Path":"..books[*](cicontains(@.Title, 'R')).Title","Results":["Sayings of the Century","Sword of Honour","Westward the Tide","The Lord of the Rings"]}
+{"Name":"gt","Path":".store.*[*](gt(@.Price, 18))","Results":[{"Author":"J. R. R. Tolkien","Category":"fiction","ISBN":"0-395-19395-8","Price":22.99,"Title":"The Lord of the Rings"},{"Color":"red","Price":19.95}]}
+{"Name":"gte","Path":".store.*[*](gte(@.Price, 18))","Results":[{"Author":"J. R. R. Tolkien","Category":"fiction","ISBN":"0-395-19395-8","Price":22.99,"Title":"The Lord of the Rings"},{"Color":"red","Price":19.95}]}
